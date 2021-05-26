@@ -3,7 +3,7 @@ module Localeapp
     class Get < Command
       include ::Localeapp::ApiCall
 
-      def execute(locale_key, translations)
+      def execute(locale_key = nil, translations = nil)
         @translations = translations
         @locale_key = locale_key
 
@@ -21,7 +21,7 @@ module Localeapp
       def update_backend(response)
         @output.puts "Success!"
         @output.puts "Updating backend:"
-        Localeapp.updater.dump_translation_keys(Localeapp.yaml_data(response, @locale_key), @translations)
+        Localeapp.updater.update_by_keys(Localeapp.yaml_data(response, @locale_key), @translations)
         @output.puts "Success!"
         Localeapp.poller.write_synchronization_data!(Time.now.to_i, Time.now.to_i)
       end
