@@ -4,6 +4,12 @@ module Localeapp
       include ::Localeapp::ApiCall
 
       def execute(path = nil)
+        # monkey path this method in our own projects
+        # or maybe suggest it for PR instead
+        # add a confirmation before actually push
+        STDOUT.puts "Are you sure? Enter 'yes' to confirm:"
+        input = STDIN.gets.chomp
+        raise "Aborting push. You entered #{input}" unless input == 'yes'
         @output.puts "Localeapp Push"
         if path_is_directory?(path)
           yaml_files_in_directory(path).each do |path|

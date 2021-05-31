@@ -211,3 +211,69 @@ describe Localeapp::Updater, ".dump(data)" do
     expect(mode.to_s(8)[3, 3]).to eq("644")
   end
 end
+
+describe Localeapp::Updater, ".update_by_keys(data, keys)" do
+  before(:each) do
+    @yml_dir = Dir.mktmpdir
+    Dir.glob(File.join(File.dirname(__FILE__), '..', 'fixtures', '*.yml')).each { |f| FileUtils.cp f, @yml_dir }
+    with_configuration(:translation_data_directory => @yml_dir) do
+      @updater = Localeapp::Updater.new
+    end
+  end
+
+  after(:each) do
+    FileUtils.rm_rf @yml_dir
+  end
+
+  def do_update_by_keys(data, translation_keys)
+    @updater.update_by_keys(data, translation_keys)
+  end
+
+  it "updates the requested content to the existing yml file" do
+    filepath = File.join(@yml_dir, 'en.yml')
+    content = lambda { YAML.load(File.read(filepath)) }
+    expect { do_update_by_keys({'en' => {'baz' => {'qux' => 'content2', 'quux' => 'content3'}, 'foo' => {'quuz' => 'content4'}, 'do_not_update' => 'content5', 'corge' => 'content1'}}, ['corge', 'baz', 'foo.quuz', 'foo.delete_me']) }.to change(content, :call).to({
+      'en' => {
+        'baz' => {
+          'qux' => 'content2',
+          'quux' => 'content3'
+        },
+        'bar' => {
+          'delete_me_too' => 'Delete'
+        },
+        'blank' => '',
+        'foo' => {
+          'monkey' => 'Monkey',
+          'quuz' => 'content4'
+        },
+        'corge' => 'content1',
+        'scalar1'=>nil,
+        'scalar2'=>nil,
+        'space'=>nil,
+        'tilde'=>nil
+      }
+    })
+  end
+
+  it "creates a new yml file if an unknown locale is passed" do
+    do_update_by_keys({'ja' => { 'foo' => 'bar', 'foo2' => 'bar2'} }, ['foo'])
+    expect(YAML.load(File.read(File.join(@yml_dir, 'ja.yml')))).to eq({
+      'ja' => {
+        'foo' => 'bar'
+      }
+    })
+  end
+
+  it "doesn't change an yml file's permissions" do
+    filepath = File.join(@yml_dir, 'en.yml')
+    File.chmod(0777, filepath)
+    permissions = lambda { File.stat(filepath).mode.to_s(8) }
+    expect { do_update_by_keys({'en' => { 'foo' => 'bar'} }, ['foo']) }.to_not change(permissions, :call)
+  end
+
+  it "creates new yml files chmodded with 644" do
+    do_update_by_keys({'ja' => { 'foo' => 'bar'} }, ['foo'])
+    mode = File.stat(File.join(@yml_dir, 'ja.yml')).mode # octal
+    expect(mode.to_s(8)[3, 3]).to eq("644")
+  end
+end
